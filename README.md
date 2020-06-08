@@ -3,7 +3,7 @@
 
 ## Web Interface
 
-![Final product](misc/IMG_0627.JPG)
+![Final product](misc/IMG_0627.PNG)
 
 ## Prototype
 
