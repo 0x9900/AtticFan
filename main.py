@@ -5,7 +5,6 @@ import logging
 import machine
 import network
 import ntptime
-import select
 import time
 import uasyncio as asyncio
 import ujson
@@ -14,7 +13,7 @@ import usocket as socket
 
 from machine import Pin
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger("ESP32")
 
 OFF = 0
@@ -166,6 +165,7 @@ class HTTPServer:
         client_sock, addr = s_sock.accept()
         LOG.info('Connection from: %s', addr)
         loop.create_task(self.process_connection(client_sock))
+        gc.collect()
       await asyncio.sleep_ms(200)
 
   async def process_connection(self, sock):

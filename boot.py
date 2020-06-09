@@ -20,7 +20,7 @@ def do_connect():
     sta_if.active(True)
     sta_if.connect(wc.SSID, wc.PASSWORD)
     while not sta_if.isconnected():
-      pass
+      time.sleep(1)
   print('Network config:', sta_if.ifconfig())
 
 try:
@@ -31,7 +31,7 @@ except ImportError:
   from machine import reset
   from upip import install
   install('logging')
-  temporize()
+  temporize(3)
   reset()
 
 def no_debug():
