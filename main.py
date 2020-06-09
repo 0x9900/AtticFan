@@ -13,6 +13,8 @@ import usocket as socket
 
 from machine import Pin
 
+import wificonfig as wc
+
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger("ESP32")
 
@@ -92,6 +94,34 @@ TEMPLATE =  """
 </html>
 """
 
+class Network:
+  # this class is a singleton.
+  _instance = None
+
+  def __new__(cls, *args, **kwargs):
+    if cls._instance is None:
+      cls._instance = super(Network, cls).__new__(cls)
+      cls._instance.sta_if = None
+    return cls._instance
+
+  def __init__(self):
+    if self.sta_if:
+      return
+    self.sta_if = network.WLAN(network.STA_IF)
+
+  def connect(self, ssid, password):
+    if self.sta_if.isconnected():
+      return
+    LOG.info('Connecting to network...')
+    self.sta_if.active(True)
+    self.sta_if.connect(ssid, password)
+
+  def isconnected(self):
+    return self.sta_if.isconnected()
+
+  def disconnect(self):
+    self.sta_if.disconnect()
+
 
 class RHSensor:
 
@@ -151,6 +181,10 @@ class HTTPServer:
 
   async def run(self, loop, sensor):
     self.sensor = sensor
+    network = Network()
+    while not network.isconnected(): # wait for the wifi connection is available
+      await asyncio.sleep_ms(500)
+
     s_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # server socket
     s_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s_sock.bind((self.addr, self.port))
@@ -166,7 +200,7 @@ class HTTPServer:
         LOG.info('Connection from: %s', addr)
         loop.create_task(self.process_connection(client_sock))
         gc.collect()
-      await asyncio.sleep_ms(200)
+      await asyncio.sleep_ms(100)
 
   async def process_connection(self, sock):
     global FAN_FORCE
@@ -236,18 +270,18 @@ class HTTPServer:
     await wfd.awrite(HTTP_ERR % (err_code * 2))
 
   async def send_page(self, wfd):
-    LOG.debug('Send page')
+    LOG.info('Send page')
     fan_states = {0: "Off", 1: "On"}
     force_states = {True: 'Forced', False: "Automatic"}
     header = ('HTTP/1.1 200 OK',
               'Content-Type: text/html',
               'Connection: close',
               '\n\n')
+    await wfd.awrite('\n'.join(header))
     response = TEMPLATE % (
       self.sensor.temperature, self.sensor.humidity,
       fan_states[FAN.value()], force_states[FAN_FORCE], int(TEMPERATURE_THRESHOLD),
     )
-    await wfd.awrite('\n'.join(header))
     await wfd.awrite(response)
 
   def close(self):
@@ -288,6 +322,9 @@ async def heartbeat():
 
 
 async def timesync():
+  network = Network()
+  while not network.isconnected():
+    await asyncio.sleep(1)
   while True:
     try:
       ntptime.settime()
@@ -299,24 +336,9 @@ async def timesync():
     await asyncio.sleep(wait_time)
 
 
-def ap_connect():
-  import wificonfig as wc
-  sta_if = network.WLAN(network.STA_IF)
-  if sta_if.isconnected():
-    return sta_if
-  LOG.info('Connecting to network...')
-  sta_if.active(True)
-  sta_if.connect(wc.SSID, wc.PASSWORD)
-  for sleep_time in range(7):
-    if sta_if.isconnected():
-      LOG.info('Network config: %s', sta_if.ifconfig())
-      return sta_if
-    time.sleep(1 + sleep_time)
-  LOG.debug('Cannot connect, going into deep sleep for a minute')
-  machine.deepsleep(1000 * 60)
-
 def main():
-  ap_connect()
+  network = Network()
+  network.connect(wc.SSID, wc.PASSWORD)
 
   sensor = RHSensor(DHT_GPIO)
   server = HTTPServer('0.0.0.0', 80)
