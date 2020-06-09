@@ -1,6 +1,7 @@
 .DS_Store
 *~
 *.pyc
+*.mpy
 wificonfig.py
 /pexec.egg-info/
 /build/
