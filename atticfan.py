@@ -21,15 +21,14 @@ LOG = logging.getLogger("ESP32")
 OFF = 0
 ON = 1
 
-FAN = Pin(12, Pin.OUT)
+FAN = Pin(4, Pin.OUT)
 FAN_FORCE = False
 
 DHT_GPIO = 13
 
 TEMPERATURE_THRESHOLD = 24.0
 
-HTTP_ERR = """
-<html>
+HTTP_ERR = """<html>
 <head>
  <title>%d %s</title>
  <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -42,8 +41,7 @@ HTTP_ERR = """
 </html>
 """
 
-TEMPLATE =  """
-<html>
+TEMPLATE =  """<html>
 <head>
  <title>Attic Fan</title>
  <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -289,25 +287,34 @@ class HTTPServer:
       sock.close()
 
 
+async def cycle(iterable):
+  saved = []
+  for element in iterable:
+    yield element
+    saved.append(element)
+  while saved:
+    for element in saved:
+      yield element
+
+
 async def run_fan(sensor):
-  while True:
-    LOG.debug('run_fan threshold: %d', TEMPERATURE_THRESHOLD)
-    await asyncio.sleep_ms(50)
+  LOG.debug('run_fan threshold: %d', TEMPERATURE_THRESHOLD)
+  async for cnt in cycle(range(4)):
+    if cnt == 0:
+      LOG.info("Temp: %0.2f, Humidity: %0.2f, Threshold: %d",
+               sensor.temperature, sensor.humidity, TEMPERATURE_THRESHOLD)
+    await asyncio.sleep_ms(10)
     if FAN_FORCE:
       if FAN.value() == OFF:
         FAN.value(ON)
-      await asyncio.sleep(5)
-      continue
+    else:
+      if sensor.temperature > TEMPERATURE_THRESHOLD and FAN.value() == OFF:
+        FAN.value(ON)
+        LOG.debug("Temp ON")
+      elif sensor.temperature < TEMPERATURE_THRESHOLD and FAN.value() == ON:
+        FAN.value(OFF)
+        LOG.debug("Temp OFF")
 
-    LOG.info("Temp: %0.2f, Humidity: %0.2f, Threshold: %d",
-             sensor.temperature, sensor.humidity, TEMPERATURE_THRESHOLD)
-    await asyncio.sleep_ms(100)
-    if sensor.temperature > TEMPERATURE_THRESHOLD and FAN.value() == OFF:
-      FAN.value(ON)
-      LOG.debug("Temp ON")
-    elif sensor.temperature < TEMPERATURE_THRESHOLD and FAN.value() == ON:
-      FAN.value(OFF)
-      LOG.debug("Temp OFF")
     await asyncio.sleep(15)
 
 
