@@ -56,6 +56,7 @@ TEMPLATE =  """<html>
     .button{display: inline-block; background-color: #e7bd3b; border: none;border-radius: 4px; color: white;
             padding: 12px 20px; text-decoration: none; font-size: 18px; margin: 2px; cursor: pointer;}
     .button2{background-color: #4286f4;}
+    .reset{background-color: #ff2222; font-size: 10; padding: 5px 10px;}
   </style>
 </head>
 <body>
@@ -71,6 +72,9 @@ TEMPLATE =  """<html>
   <p><form>
       <label for="cars">Temperature threshold:</label>
       <select name="temp" id="temp" onchange="this.form.submit()">
+	<option value="14">14</option>
+	<option value="15">15</option>
+	<option value="16">16</option>
 	<option value="17">17</option>
 	<option value="18">18</option>
 	<option value="19">19</option>
@@ -81,11 +85,12 @@ TEMPLATE =  """<html>
 	<option value="24">24</option>
 	<option value="25">25</option>
 	<option value="26">26</option>
-	<option value="27">27</option>
-	<option value="28">28</option>
       </select> C
     </form>
   </p>
+  <div>
+    <a href="/?command=reset"><button class="button reset">Reset</button></a>
+  </div>
   <script>
     document.getElementById("temp").value = %d;
   </script>
@@ -224,6 +229,9 @@ class HTTPServer:
       LOG.debug('Request: %s', request)
       if request == '/':
         await self.send_page(swriter)
+      elif 'command=reset' in request:
+        await self.send_redirect(swriter)
+        machine.reset()
       elif 'force=on' in request:
         FAN_FORCE = True
         FAN.value(ON)
