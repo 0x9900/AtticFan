@@ -21,7 +21,7 @@ LOG = logging.getLogger("ESP32")
 OFF = 0
 ON = 1
 
-FAN = Pin(4, Pin.OUT)
+FAN = Pin(4, Pin.OUT, value=OFF)
 FAN_FORCE = False
 
 DHT_GPIO = 13
@@ -45,6 +45,7 @@ TEMPLATE =  """<html>
 <head>
  <title>Attic Fan</title>
  <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta http-equiv="Refresh" content="60; URL=/">
  <link rel="icon" href="data:,">
  <style>
     html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
@@ -287,7 +288,7 @@ class HTTPServer:
       sock.close()
 
 
-async def cycle(iterable):
+def cycle(iterable):
   saved = []
   for element in iterable:
     yield element
@@ -299,7 +300,9 @@ async def cycle(iterable):
 
 async def run_fan(sensor):
   LOG.debug('run_fan threshold: %d', TEMPERATURE_THRESHOLD)
-  async for cnt in cycle(range(4)):
+  counter = cycle(range(4))
+  while True:
+    cnt = counter.__next__()
     if cnt == 0:
       LOG.info("Temp: %0.2f, Humidity: %0.2f, Threshold: %d",
                sensor.temperature, sensor.humidity, TEMPERATURE_THRESHOLD)
