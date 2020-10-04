@@ -1,3 +1,7 @@
+#
+# (c) W6BSD Fred Cirera
+# Check the file LICENCE on https://github.com/0x9900/AtticFan
+#
 
 import dht
 import gc
