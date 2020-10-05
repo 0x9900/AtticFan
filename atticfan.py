@@ -8,14 +8,13 @@ import gc
 import logging
 import machine
 import network
-import ntptime
 import time
 import uasyncio as asyncio
 import ujson
 import uselect as select
 import usocket as socket
 
-from machine import Pin
+from machine import Pin, WDT
 
 import wificonfig as wc
 
@@ -235,6 +234,7 @@ class HTTPServer:
         await self.send_page(swriter)
       elif 'command=reset' in request:
         await self.send_redirect(swriter)
+        await asyncio.sleep(3)
         machine.reset()
       elif 'force=on' in request:
         FAN_FORCE = True
@@ -336,26 +336,14 @@ async def run_fan(sensor):
 async def heartbeat():
   speed = 125
   led = Pin(2, Pin.OUT, value=1)
+  wdt = WDT()
   while True:
     led(1)
+    wdt.feed()
     await asyncio.sleep_ms(speed)
     led(0)
-    await asyncio.sleep_ms(speed*16)
-
-
-async def timesync():
-  network = Network()
-  while not network.isconnected():
-    await asyncio.sleep(1)
-  while True:
-    try:
-      ntptime.settime()
-    except OSError as err:
-      LOG.warning('timesync: %s', err)
-      wait_time = 300
-    else:
-      wait_time = 3600 * 4
-    await asyncio.sleep(wait_time)
+    wdt.feed()
+    await asyncio.sleep_ms(speed * 10)
 
 
 def main():
@@ -368,7 +356,6 @@ def main():
   loop = asyncio.get_event_loop()
   loop.create_task(heartbeat())
   loop.create_task(run_fan(sensor))
-  loop.create_task(timesync())
   loop.create_task(server.run(loop, sensor))
   try:
     loop.run_forever()
