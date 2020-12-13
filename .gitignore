@@ -7,4 +7,4 @@ wificonfig.py
 /build/
 /dist/
 scratch_pad.py
-misc/*.json
+html/_index.html
