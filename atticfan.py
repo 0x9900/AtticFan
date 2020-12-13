@@ -4,7 +4,6 @@
 #
 
 import gc
-import logging
 import machine
 import network
 import time
@@ -20,7 +19,8 @@ from machine import unique_id
 from ubinascii import hexlify
 from umqtt.robust import MQTTClient
 
-from bmp180 import BMP180
+import logging
+import bme280
 
 import wificonfig as wc
 
@@ -71,7 +71,7 @@ def parse_headers(head_lines):
   return headers
 
 
-class EnvSensor(BMP180):
+class EnvSensor(bme280.BME280):
 
   _instance = None
   def __new__(cls, *args, **kwargs):
@@ -80,19 +80,41 @@ class EnvSensor(BMP180):
     return cls._instance
 
   def __init__(self, i2c=None):
-    if hasattr(self, '_bmp_i2c'):
+    if hasattr(self, 'i2c'):
       return
     if not i2c:
       raise OSError('I2C bus argument missing')
-    super(EnvSensor, self).__init__(i2c)
+    self.cache_time = 0
+    super(EnvSensor, self).__init__(i2c=i2c)
+    self.set_power_mode(bme280.BME280_NORMAL_MODE)
+
+  def read_data(self):
+    """Read the compensated data and cache it for 15 seconds"""
+    now = time.time()
+    if not hasattr(self, "compensated_data") or  now < self.cache_time + 15:
+      self.cache_time = now
+      self.compensated_data = self.get_measurement()
+
+    return self.compensated_data
 
   @property
   def pressure(self):
-    return self.mb_pressure / 100.0
+    data = self.read_data()
+    return data['pressure']
 
   @property
   def temp(self):
-    return self.temperature
+    data = self.read_data()
+    return data['temperature']
+
+  @property
+  def humidity(self):
+    data = self.read_data()
+    return data['humidity']
+
+  @property
+  def temperature(self):
+    return self.temp
 
 
 class FAN:
@@ -342,7 +364,7 @@ class MQTTData:
 
     while True:
       try:
-        for key in ['temperature', 'pressure']:
+        for key in ['temperature', 'pressure', 'humidity']:
           value = "{:.2f}".format(getattr(sensor, key))
           self.client.publish(self.topic(key), bytes(value, 'utf-8'))
           LOG.info('Publishing: %s: %s', key, value)
@@ -372,15 +394,6 @@ def wifi_connect(ssid, password):
   LOG.info('Network config: %s', sta_if.ifconfig())
   gc.collect()
   return sta_if
-
-def cycle(iterable):
-  saved = []
-  for element in iterable:
-    yield element
-    saved.append(element)
-  while saved:
-    for element in saved:
-      yield element
 
 async def heartbeat():
   speed = 1500
