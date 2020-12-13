@@ -1,3 +1,13 @@
 # Rename this file into wificonfig.py
+# Complete with your credentials
+
 SSID='wifi ssid'
 PASSWORD='wifi password'
+
+# Adafruit.io MQTT broaker
+IO_USERNAME = 'user_name'
+IO_URL = 'io.adafruit.com'
+IO_KEY = '123456789123456789123456789'
+
+# MQTT stream name
+SNAME = "device_name"
