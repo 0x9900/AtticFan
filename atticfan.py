@@ -4,7 +4,6 @@
 #
 
 import gc
-import machine
 import network
 import time
 import uasyncio as asyncio
@@ -267,6 +266,7 @@ class Server:
     data['running'] = self.fan.is_running()
     data['threshold'] = self.fan.threshold
     data['temp'] = self.sensor.temp
+    data['humidity'] = self.sensor.humidity
     data['pressure'] = self.sensor.pressure
     return data
 

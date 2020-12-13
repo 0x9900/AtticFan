@@ -5,36 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <link href="/style.css" rel="stylesheet">
-    <link rel="icon" href="data:,">
+    <link rel="icon" href="data:*">
   </head>
   <body onload="monitor()">
     <h1>Garage</h1>
     <h2>Fan Controller</h2>
     <hr>
-    <p>
-      Temperature: <b><span id="temp">0.0</span> C</b>
-      Pressure: <b><span id="pressure">0.0</span> hPa</b>
-    </p>
-    <p>
-      <form>
-	<label for="threshold">Temperature threshold:</label>
-	<select name="threshold" id="threshold" onchange="this.form.submit()">
-	  <option value="16">16</option>
-	  <option value="17">17</option>
-	  <option value="18">18</option>
-	  <option value="19">19</option>
-	  <option value="20">20</option>
-	  <option value="21">21</option>
-	  <option value="22">22</option>
-	  <option value="23">23</option>
-	  <option value="24">24</option>
-	  <option value="25">25</option>
-	  <option value="26">26</option>
-	  <option value="28">28</option>
-	</select> C
-      </form>
+    <p>Temp: <b><span id="temp">0.0</span> C</b> Humidity: <b><span id="humidity">0.0</span> %</b></p>
+    <form>
+      <label for="threshold">Temperature threshold:</label>
+      <select name="threshold" id="threshold" onchange="this.form.submit()">
+	<option value="16">16</option>
+	<option value="17">17</option>
+	<option value="18">18</option>
+	<option value="19">19</option>
+	<option value="20">20</option>
+	<option value="21">21</option>
+	<option value="22">22</option>
+	<option value="23">23</option>
+	<option value="24">24</option>
+	<option value="25">25</option>
+	<option value="26">26</option>
+      </select> C
+    </form>
     <hr>
-    <div id="buttons" class="buttons">
+    <div class="buttons">
       <button id="toggle" class="button" onclick="toggleFan()">Automatic</button>
     </div>
     <div id="fan"></div>
@@ -62,12 +57,12 @@
       }
       function processData(data) {
 	  if (data["running"] == true) {
-	      $("#fan").text("Fan ON");
+	      $("#fan").text("ON");
 	  } else {
-	      $("#fan").text("Fan OFF");
+	      $("#fan").text("OFF");
 	  }
 	  $("#temp").text(data["temp"].toFixed(2));
-	  $("#pressure").text(data["pressure"].toFixed(2));
+	  $("#humidity").text(data["humidity"].toFixed(2));
 	  if (data["fan"] == 0) {
 	      $("#toggle").text("Off");
 	  } else if (data["fan"] == 1) {
