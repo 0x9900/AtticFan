@@ -5,6 +5,7 @@
 
 import gc
 import network
+import os
 import time
 import uasyncio as asyncio
 import ujson
@@ -23,11 +24,11 @@ import bme280
 
 import wificonfig as wc
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger(wc.SNAME)
 
 SAMPLING = 120.0
-
+STATE_FILE = "/tmp/state.json"
 TEMPERATURE_THRESHOLD = 22.0
 
 HTML_PATH = b'/html'
@@ -68,7 +69,6 @@ def parse_headers(head_lines):
       except:
         LOG.warning('header line warning: %s', line)
   return headers
-
 
 class EnvSensor(bme280.BME280):
 
@@ -131,12 +131,35 @@ class FAN:
     if not hasattr(self, '_pin'):
       # This is the first call
       self._pin = pin
-      self._status = 2
-      self._threshold = TEMPERATURE_THRESHOLD
       self.sensor = sensor
 
-  def __repr__(self):
-    return "<FAN> Status: {}, Threshold: {}, Pin: {}".format(self._status, self._threshold, self._pin)
+    self._read_state()
+
+  def _read_state(self):
+    try:
+      os.mkdir('/tmp')
+      with open(STATE_FILE, "w") as fd:
+        fd.write(ujson.dumps({"status": 2, "threshold": TEMPERATURE_THRESHOLD}))
+    except OSError:
+      pass
+
+    try:
+      state = {}
+      with open(STATE_FILE, "r") as fd:
+        state = ujson.loads(fd.read())
+    except OSError as err:
+      LOG.warning(err)
+
+    self._status = state.get("status", 2)
+    self._threshold = state.get("threshold", TEMPERATURE_THRESHOLD)
+    gc.collect()
+
+  def _save_state(self):
+    try:
+      with open(STATE_FILE, "w") as fd:
+        fd.write(ujson.dumps({"status": self._status, "threshold": self._threshold}))
+    except OSError as err:
+      LOG.warning(err)
 
   @property
   def threshold(self):
@@ -146,6 +169,7 @@ class FAN:
   def threshold(self, val):
     self._threshold = val
     self.runfan()
+    self._save_state()
 
   def runfan(self):
     if self.threshold < self.sensor.temp:
@@ -166,13 +190,13 @@ class FAN:
   def status(self, val=None):
     if val is None:
       return self._status
-    else:
-      try:
-        val = int(val)
-      except ValueError as err:
-        LOG.error(err)
-        return
-      self._status = val
+    try:
+      val = int(val)
+    except ValueError as err:
+      LOG.error(err)
+      return
+    self._status = val
+    self._save_state()
 
   def on(self):
     self._pin.on()
@@ -285,7 +309,8 @@ class Server:
     try:
       with open(fpath, 'rb') as fd:
         await wfd.awrite(self._headers(200, mime_type, cache=-1))
-        await wfd.awrite(fd.read())
+        for line in fd:
+          await wfd.awrite(line)
     except OSError as err:
       LOG.debug('send file error: %s %s', err, url)
       await self.send_error(wfd, 404)
