@@ -124,9 +124,9 @@ class EnvSensor(bme280.BME280):
 
 
 class FAN:
-  AUTOMATIC = const(2)
-  ON = const(1)
   OFF = const(0)
+  ON = const(1)
+  AUTOMATIC = const(2)
 
   _instance = None
   def __new__(cls, *args, **kwargs):
@@ -146,7 +146,7 @@ class FAN:
     try:
       os.mkdir('/tmp')
       with open(STATE_FILE, "w") as fd:
-        fd.write(ujson.dumps({"status": 2, "threshold": TEMPERATURE_THRESHOLD}))
+        fd.write(ujson.dumps({"status": self.AUTOMATIC, "threshold": TEMPERATURE_THRESHOLD}))
     except OSError:
       pass
 
@@ -157,7 +157,7 @@ class FAN:
     except OSError as err:
       LOG.warning(err)
 
-    self._status = state.get("status", 2)
+    self._status = state.get("status", self.AUTOMATIC)
     self._threshold = state.get("threshold", TEMPERATURE_THRESHOLD)
     gc.collect()
 
