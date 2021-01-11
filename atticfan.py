@@ -24,9 +24,10 @@ import bme280
 
 import wificonfig as wc
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 LOG = logging.getLogger(wc.SNAME)
 
+MQTT = False
 SAMPLING = 120.0
 STATE_FILE = "/tmp/state.json"
 TEMPERATURE_THRESHOLD = 22.0
@@ -85,12 +86,18 @@ class EnvSensor(bme280.BME280):
       raise OSError('I2C bus argument missing')
     self.cache_time = 0
     super(EnvSensor, self).__init__(i2c=i2c)
+    self.set_measurement_settings({
+      'filter': bme280.BME280_FILTER_COEFF_16,
+      'standby_time': bme280.BME280_STANDBY_TIME_500_US,
+      'osr_h': bme280.BME280_OVERSAMPLING_1X,
+      'osr_p': bme280.BME280_OVERSAMPLING_16X,
+      'osr_t': bme280.BME280_OVERSAMPLING_2X})
     self.set_power_mode(bme280.BME280_NORMAL_MODE)
 
   def read_data(self):
     """Read the compensated data and cache it for 15 seconds"""
     now = time.time()
-    if not hasattr(self, "compensated_data") or  now < self.cache_time + 15:
+    if not hasattr(self, "compensated_data") or  now < self.cache_time + 30:
       self.cache_time = now
       self.compensated_data = self.get_measurement()
 
@@ -185,7 +192,7 @@ class FAN:
         self.on()
       elif self._status == self.OFF and self.is_running():
         self.off()
-      await asyncio.sleep_ms(30)
+      await asyncio.sleep_ms(500)
 
   def status(self, val=None):
     if val is None:
@@ -232,6 +239,7 @@ class Server:
         c_sock, addr = s_sock.accept()  # get client socket
         LOG.info('Connection from %s:%d', *addr)
         loop.create_task(self.process_request(c_sock))
+        gc.collect()
       await asyncio.sleep_ms(100)
 
   async def process_request(self, sock):
@@ -404,7 +412,7 @@ class MQTTData:
         for _ in range(nb_samples):
           self.client.check_msg()
           await asyncio.sleep_ms(sampling)
-
+      gc.collect()
 
 def wifi_connect(ssid, password):
   ap_if = network.WLAN(network.AP_IF)
@@ -437,15 +445,15 @@ def main():
   fan = FAN(Pin(15, Pin.OUT, value=0), sensor)
 
   wifi = wifi_connect(wc.SSID, wc.PASSWORD)
-
-  mqtt = MQTTData(wc.IO_URL, wc.IO_USERNAME, wc.IO_KEY, wc.SNAME)
   server = Server()
 
   loop = asyncio.get_event_loop()
   loop.create_task(heartbeat())
-  loop.create_task(mqtt.run())
   loop.create_task(fan.run())
   loop.create_task(server.run(loop))
+  if MQTT and wc.IO_USERNAME:
+    mqtt = MQTTData(wc.IO_URL, wc.IO_USERNAME, wc.IO_KEY, wc.SNAME)
+    loop.create_task(mqtt.run())
 
   try:
     loop.run_forever()
