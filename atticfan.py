@@ -16,6 +16,7 @@ from machine import I2C
 from machine import Pin
 from machine import WDT
 from machine import unique_id
+from machine import reset
 from ubinascii import hexlify
 from umqtt.robust import MQTTClient
 
@@ -192,7 +193,7 @@ class FAN:
         self.on()
       elif self._status == self.OFF and self.is_running():
         self.off()
-      await asyncio.sleep_ms(500)
+      await asyncio.sleep_ms(1000)
 
   def status(self, val=None):
     if val is None:
@@ -274,6 +275,8 @@ class Server:
         await self.send_json(swriter, data)
       elif uri.startswith('/api/v1/select/'):
         await self.switch_antenna(swriter, uri)
+      elif uri.startswith('/api/v1/reboot'):
+        await self.reboot(swriter)
       elif 'threshold=' in uri:
         _, val = uri.split(b'=')
         if val.isdigit():
@@ -294,6 +297,7 @@ class Server:
 
   async def get_sensors(self):
     data = {}
+    data['uptime'] = time.time()
     data['fan'] = self.fan.status()
     data['running'] = self.fan.is_running()
     data['threshold'] = self.fan.threshold
@@ -341,6 +345,13 @@ class Server:
     LOG.debug('Closing %d sockets', len(self.open_socks))
     for sock in self.open_socks:
       sock.close()
+
+  async def reboot(self, wfd):
+    jdata = ujson.dumps({"status": "reboot"})
+    await wfd.awrite(self._headers(200, b'json', content_len=len(jdata)))
+    await wfd.awrite(jdata)
+    await asyncio.sleep_ms(500)
+    reset()
 
   @staticmethod
   def _headers(code, mime_type=None, location=None, content_len=0, cache=None):
