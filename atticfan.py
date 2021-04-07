@@ -28,7 +28,6 @@ import wificonfig as wc
 logging.basicConfig(level=logging.DEBUG)
 LOG = logging.getLogger(wc.SNAME)
 
-MQTT = False
 SAMPLING = 120.0
 STATE_FILE = "/tmp/state.json"
 TEMPERATURE_THRESHOLD = 22.0
@@ -462,7 +461,7 @@ def main():
   loop.create_task(heartbeat())
   loop.create_task(fan.run())
   loop.create_task(server.run(loop))
-  if MQTT and wc.IO_USERNAME:
+  if wc.MQTT and wc.IO_USERNAME:
     mqtt = MQTTData(wc.IO_URL, wc.IO_USERNAME, wc.IO_KEY, wc.SNAME)
     loop.create_task(mqtt.run())
 
