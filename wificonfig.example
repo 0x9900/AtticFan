@@ -10,7 +10,6 @@ IO_URL = 'io.adafruit.com'
 IO_KEY = '123456789123456789123456789'
 
 # MQTT stream name
-#
 # For MQTT set your username and key above the set the MQTT variable
 # to True.
 #

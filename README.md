@@ -3,7 +3,7 @@
 
 ## Web Interface
 
-![Screen Shoot](misc/IMG_0627.PNG)
+![Screen Shoot](misc/ScreenShot.jpeg)
 
 ## Prototype
 
