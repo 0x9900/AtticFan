@@ -93,6 +93,7 @@ class EnvSensor(bme280.BME280):
       'osr_p': bme280.BME280_OVERSAMPLING_16X,
       'osr_t': bme280.BME280_OVERSAMPLING_2X})
     self.set_power_mode(bme280.BME280_NORMAL_MODE)
+    gc.collect()
 
   def read_data(self):
     """Read the compensated data and cache it for 15 seconds"""
@@ -101,6 +102,7 @@ class EnvSensor(bme280.BME280):
       self.cache_time = now
       self.compensated_data = self.get_measurement()
 
+    gc.collect()
     return self.compensated_data
 
   @property
@@ -296,13 +298,13 @@ class Server:
 
   async def get_sensors(self):
     data = {}
-    data['uptime'] = time.time()
     data['fan'] = self.fan.status()
     data['running'] = self.fan.is_running()
     data['threshold'] = self.fan.threshold
     data['temp'] = self.sensor.temp
     data['humidity'] = self.sensor.humidity
     data['pressure'] = self.sensor.pressure
+    gc.collect()
     return data
 
   async def send_json(self, wfd, data):
@@ -313,10 +315,9 @@ class Server:
     gc.collect()
 
   async def send_file(self, wfd, url):
-    LOG.debug('send_file: %s', url)
     fpath = b'/'.join([HTML_PATH, url.lstrip(b'/')])
     mime_type = fpath.split(b'.')[-1]
-
+    LOG.debug('send_file: %s mime_type: %s', url, mime_type)
     try:
       with open(fpath, 'rb') as fd:
         await wfd.awrite(self._headers(200, mime_type, cache=-1))
@@ -371,7 +372,7 @@ class Server:
     elif cache and isinstance(cache, str):
       headers.append(b'Cache-Control: '.format(cache))
     headers.append(b'Connection: close')
-
+    gc.collect()
     return b'\n'.join(headers) + b'\n\n'
 
 
@@ -449,8 +450,8 @@ async def heartbeat():
 
 def main():
   LOG.info('Last chance to press [^C]')
-  time.sleep(3)
-  i2c = I2C(-1, scl=Pin(5), sda=Pin(4))
+  time.sleep(7)
+  i2c = I2C(scl=Pin(5), sda=Pin(4))
   sensor = EnvSensor(i2c)
   fan = FAN(Pin(15, Pin.OUT, value=0), sensor)
 

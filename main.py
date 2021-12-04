@@ -1,8 +1,9 @@
 #
+import gc
 try:
   import atticfan
 except ImportError:
   print('Atticfan app is not installed')
 else:
-  print()
+  gc.collect()
   atticfan.main()

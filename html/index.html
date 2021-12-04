@@ -4,7 +4,7 @@
     <title>Garage Fan</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <link href="/style.css" rel="stylesheet">
+    <link href="/style.min.css" rel="stylesheet">
     <link rel="icon" href="data:*">
   </head>
   <body onload="monitor()">
@@ -34,11 +34,23 @@
     </div>
     <div id="fan"></div>
     <hr>
+        <div class="buttons">
+      <button id="reset" class="reset" onclick="reboot()">Reboot</button>
+    </div>
     <address>
       AtticFan controller using an ESP8266<br/>
       More info at <a href="https://github.com/0x9900/AtticFan/">https://github.com/0x9900/AtticFan</a>
     </address>
     <script type="text/javascript">
+      function reboot() {
+	  var response = confirm("Do you want to reboot switch?");
+	  if (response == true) {
+	      var rebootPath = "/api/v1/reboot";
+	      $.getJSON(rebootPath)
+		  .done(function(data) {alert('System reboot');})
+		  .fail(function(jqxhr, textStatus, error) {alert(error);})
+	  }
+      }
       function toggleFan() {
 	  var toggleCall = "/api/v1/togglefan";
 	  $.getJSON(toggleCall)
@@ -74,7 +86,7 @@
       }
       function monitor() {
 	  showEnv();
-	  setTimeout(monitor, 5000);
+	  setTimeout(monitor, 7000);
       }
       </script>
   </body>
