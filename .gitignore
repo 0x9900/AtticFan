@@ -8,3 +8,4 @@ wificonfig.py
 /dist/
 scratch_pad.py
 html/_index.html
+html/style.min.css
